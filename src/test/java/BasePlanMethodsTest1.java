@@ -15,7 +15,7 @@ class BasePlanMethodsTest1 {
                 {2, 9, 2},
                 {13, 4, 11}
         };
-        table = new TransportTaskTable(storage, 3, need, 3, cost);
+        table = new TransportTaskTable(storage, need, cost);
     }
 
     @Test
@@ -39,10 +39,4 @@ class BasePlanMethodsTest1 {
         Assertions.assertEquals(expected, actual);
     }
 
-    @Test
-    void doublePreferenceMethod() {
-        int expected = 47;
-        int actual = Main.calculateBasePlan(3, 3, table.cost, Main.doublePreferenceMethod(table));
-        Assertions.assertEquals(expected, actual);
-    }
 }

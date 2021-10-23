@@ -67,9 +67,7 @@ class UtilFunctionsTest {
                 {11, 13, 1},
                 {8, 9, 3}
         };
-        TransportTaskTable table = new TransportTaskTable(
-                storage, 3, need, 3, cost
-        );
+        TransportTaskTable table = new TransportTaskTable(storage, need, cost);
 
         int[] expectedMinDiffStorageValues = new int[] {2, 10, 5};
         int[] expectedMinDiffCustomerValues = new int[] {3, 7, 2};
@@ -126,37 +124,6 @@ class UtilFunctionsTest {
             Assertions.assertEquals(expected2.x, actual2.x);
             Assertions.assertEquals(expected2.y, actual2.y);
         });
-    }
-
-    @Test
-    void calculateDeltaFreeCellsTest() {
-    }
-
-    @Test
-    void calculateDeltaBasicCellsTest() {
-        int[][] cost = new int[][] {
-                {3, 17, 4},
-                {1, 1, 1},
-                {11, 7, 5},
-                {4, 7, 9}
-        };
-        int[][] basePlan = new int[][] {
-                {4, -1, -1},
-                {2, 7, -1},
-                {-1, 3, 1},
-                {-1, -1, 1}
-        };
-
-        int[] expectedV = new int[] {3, 3, 1};
-        int[] expectedU = new int[] {0, -2, 4, 8};
-
-        int[] actualU = new int[4];
-        int[] actualV = new int[3];
-
-        Main.calculateDeltaBasicCells(4, 3, basePlan, cost, actualU, actualV);
-
-        Assertions.assertArrayEquals(expectedU, actualU);
-        Assertions.assertArrayEquals(expectedV, actualV);
     }
 
     @Test

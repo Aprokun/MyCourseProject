@@ -1,9 +1,11 @@
+import model.Shipment;
 import model.TransportTaskTable;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.lang.Math.abs;
+import static java.util.stream.Collectors.toCollection;
 
 public class Main {
     private static final Scanner in = new Scanner(System.in);
@@ -33,7 +35,15 @@ public class Main {
         }
     }
 
-    //Заполняет каждую ячейку матрицы a размера MxN числом num.
+
+    /**
+     * Заполняет каждую ячейку матрицы.
+     *
+     * @param num число, которым заполняется матрица
+     * @param m   количество строк матрицы
+     * @param n   количество столбцов матрицы
+     * @param a   матрица
+     */
     public static void fillMatrixWith(final int num, final int m, final int n, int[][] a) {
         for (int i = 0; i < m; ++i) {
             for (int j = 0; j < n; ++j) {
@@ -42,81 +52,208 @@ public class Main {
         }
     }
 
-    /*
-    Возвращает истину, если столбце col в матрице basePlan,
-    в которой размер строки равен storage_amount, пустой, то
-    есть не содержит в себе заполненных клеток, иначе - ложь.
-    */
-    boolean isEmptyCol(final int storage_amount, final int col, final int[][] basePlan) {
-        for (int i = 0; i < storage_amount; ++i)
-            if (basePlan[i][col] != -1) return false;
-        return true;
-    }
 
-    /*
-    Исправляет возникшую в ходе выполнения вырожденность плана.
-    Происходит, когда запас склада равен потребности заказчика,
-    в следствии чего теряются значения для невырожденного опорного плана.
-    Исправление выполняется по принципу помещения нулевого значения в ЛЮБОЙ пустой столбец.
-    */
-    void fixDegenerate(final int customers_amount, final int storage_amount, int[][] basePlan, final int i) {
-        //Перебираем столбцы
-        for (int k = 0; k < customers_amount; ++k) {
-            //Если столбец k в матрице basePlan пустой (т.е. в нём нет заполненных элементов)
-            if (isEmptyCol(storage_amount, k, basePlan)) {
-                basePlan[i][k] = 0;
-                break;
-            }
-        }
-    }
-
-    //Возвращает сумму опорного плана, найденную с помощью метода "северо-западного" угла.
-    static int[][] northWestMethod(TransportTaskTable table) {
+    /**
+     * Возвращает сумму опорного плана, найденную с помощью метода "северо-западного" угла.
+     *
+     * @param table таблица транспортной задачи.
+     * @return Матрицу опорного плана транспортной задачи.
+     */
+    static Shipment[][] northWestMethod(TransportTaskTable table) {
         //Матрица опорного плана
-        int[][] basePlan = new int[table.storageAmount][table.customerAmount];
-        //Заполнение матрицы опорного плана "пустыми" клетками
-        fillMatrixWith(-1, table.storageAmount, table.customerAmount, basePlan);
+        Shipment[][] basePlan = new Shipment[table.storage.length][table.need.length];
 
-        for (int i = 0; i < table.storageAmount; ++i) {
-            for (int j = 0; j < table.customerAmount; ++j) {
-                //Если потребность заказчика i удовлетворена
-                if (table.need[j] == 0) continue;
+        for (int i = 0, nw = 0; i < table.storage.length; ++i) {
+            for (int j = nw; j < table.need.length; ++j) {
+                int quantity = Math.min(table.storage[i], table.need[j]);
 
-                //Если запасы скалада j равны нулю
-                if (table.storage[i] == 0) break;
+                if (quantity > 0) {
+                    basePlan[i][j] = new Shipment(table.cost[i][j], i, j, quantity);
 
-                //Если запасы склада i равны потребности заказчика j
-                if (table.need[j] == table.storage[i]) {
-                    basePlan[i][j] = table.storage[i];
-                    if (j + 1 < table.customerAmount) {
-                        basePlan[i][j + 1] = 0;
-                    } else if (i + 1 < table.storageAmount) {
-                        basePlan[i + 1][j] = 0;
+                    table.storage[i] -= quantity;
+                    table.need[j] -= quantity;
+
+                    if (table.storage[i] == 0) {
+                        nw = j;
+                        break;
                     }
-                    table.storage[i] = table.need[j] = 0;
                 }
-
-                //Если потребность заказчика j больше, чем запасы склада i
-                if (table.need[j] > table.storage[i]) {
-                    table.need[j] -= table.storage[i];
-                    basePlan[i][j] = table.storage[i];
-                    table.storage[i] = 0;
-                }
-
-                //Если потребность заказчика i меньше чем запасы склада j
-                if (table.need[j] < table.storage[i]) {
-                    table.storage[i] -= table.need[j];
-                    basePlan[i][j] = table.need[j];
-                    table.need[j] = 0;
-                }
-
-                //Если все потребности удовлетворены и все запасы закончились
-                if (Arrays.stream(table.need).allMatch(el -> el == 0) && Arrays.stream(table.storage).allMatch(el -> el == 0))
-                    return basePlan;
             }
         }
 
         return basePlan;
+    }
+
+
+    /**
+     * Строит цикл для перевозки
+     *
+     * @param basePlan опорный план транспортной задачи.
+     * @param s        перевозка, для которой осуществляется построение цикла.
+     * @return Массив перевозок цикла перерасчёта,
+     * иначе - пустой массив.
+     */
+    static Shipment[] getClosedPath(Shipment[][] basePlan, Shipment s) {
+        LinkedList<Shipment> path = matrixToList(basePlan);
+        path.addFirst(s);
+
+        //Удаляем перевозки, у которых нет хотя бы одного соседа по столбцу/строке
+        while (path.removeIf(sm -> {
+            Shipment[] neighboors = getNeighbors(sm, path);
+            return neighboors[0] == null || neighboors[1] == null;
+        })) ;
+
+        Shipment[] stepStones = path.toArray(new Shipment[0]);
+        Shipment prev = s;
+        for (int i = 0; i < stepStones.length; i++) {
+            stepStones[i] = prev;
+            prev = getNeighbors(prev, path)[i % 2];
+        }
+
+        return stepStones;
+    }
+
+
+    /**
+     * Осуществляет поиск соседних клеток по строке/столбцу.
+     *
+     * @param s    перевозка из матрицы опорного плана, для которой осуществляется поиск
+     *             соседних клеток в цикле.
+     * @param path возможный цикл перерасчёта.
+     * @return Матрицу перевозок цикла с клетками, имеющими соседние клетки по строке/столбцу.
+     */
+    private static Shipment[] getNeighbors(Shipment s, LinkedList<Shipment> path) {
+        Shipment[] neighbors = new Shipment[2];
+
+        for (Shipment o : path) {
+            if (o != s) {
+                if (o.row == s.row & neighbors[0] == null) neighbors[0] = o;
+                else if (o.col == s.col && neighbors[1] == null) neighbors[1] = o;
+                if (neighbors[0] != null && neighbors[1] != null) break;
+            }
+        }
+
+        return neighbors;
+    }
+
+    /**
+     * Исправляет возникшую вырожденность опорного плана транспортной задачи.
+     *
+     * @param table    таблица транспортной задачи.
+     * @param basePlan опорный план транспортной задачи.
+     */
+    static void fixDegenerate(TransportTaskTable table, Shipment[][] basePlan) {
+        final int eps = 0;
+
+        if (table.storage.length + table.need.length - 1 != matrixToList(basePlan).size()) {
+            for (int i = 0; i < table.storage.length; i++) {
+                for (int j = 0; j < table.need.length; j++) {
+                    //Если клетка пустая
+                    if (basePlan[i][j] == null) {
+                        //Создаём фиктивную перевозку
+                        Shipment dummy = new Shipment(table.cost[i][j], i, j, eps);
+                        //Если у нас получился цикл длиной 0 (т.е. ацикличный опорный план)
+                        if (getClosedPath(basePlan, dummy).length == 0) {
+                            basePlan[i][j] = dummy;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    /**
+     * Алгоритм пошагового улучшения опорного плана.
+     * Заключается в том, что для каждой пустой клетки опорного плана строится цикл перерасчёта
+     * и сравнивается с предыдущим. В итоге мы получаем цикл, который максимально снижает
+     * общую стоимость перевозок опорного плана.
+     *
+     * @param table    таблица транспортной задачи
+     * @param basePlan таблица опорного плана.
+     */
+    static void steppingStone(TransportTaskTable table, Shipment[][] basePlan) {
+        //Максимальное сокращение опорного плана
+        int maxReduction = 0;
+        //Цикл перевозок для максимального сокращения плана
+        Shipment[] move = null;
+        //Клетка матрицы опорного плана, которая должна
+        //исчезнуть из опорного плана после перерасчёта
+        Shipment leaving = null;
+
+        for (int row = 0; row < basePlan.length; row++) {
+            for (int col = 0; col < basePlan[row].length; col++) {
+                if (basePlan[row][col] != null) continue;
+
+                //Фиктивная перевозка
+                Shipment dummy = new Shipment(table.cost[row][col], row, col, 0);
+
+                //Получаем цикл для фиктивной перевозки
+                Shipment[] path = getClosedPath(basePlan, dummy);
+
+                //Текущее сокращение общей стоимости опорного плана
+                int reduction = 0;
+                int lowestQuantity = Integer.MAX_VALUE;
+                Shipment leavingCandidate = null;
+
+                boolean isPlus = true;
+                for (Shipment sm : path) {
+                    if (isPlus) reduction += sm.costPerUnit;
+                    else {
+                        reduction -= sm.costPerUnit;
+                        if (sm.quantity == Integer.MIN_VALUE) {
+                            leavingCandidate = sm;
+                            lowestQuantity = 0;
+                        } else if (sm.quantity < lowestQuantity) {
+                            leavingCandidate = sm;
+                            lowestQuantity = sm.quantity;
+                        }
+                    }
+                    isPlus = !isPlus;
+                }
+
+                //Если текущее сокращение минимального плана получилось
+                //меньше максимального
+                if (reduction < maxReduction) {
+                    move = path;
+                    leaving = leavingCandidate;
+                    maxReduction = reduction;
+                }
+            }
+        }
+
+        //Если найден цикл перерасчёта и присутствует клетка для удаления
+        //из матрицы опорного плана
+        if (move != null && leaving != null) {
+            performReallocation(basePlan, move, leaving);
+        }
+    }
+
+    /**
+     * Производит перерасчёт опорного плана трнаспортной задачи.
+     *
+     * @param basePlan опорный план транспортной задачи.
+     * @param move     цикл перерасчёта.
+     * @param leaving  клетка, которая должна быть удалена из опорного
+     *                 плана после перерасчёта.
+     */
+    private static void performReallocation(Shipment[][] basePlan, Shipment[] move, Shipment leaving) {
+        int minQuantity = leaving.quantity == Integer.MIN_VALUE ? 0 : leaving.quantity;
+        boolean isPlus = true;
+        for (Shipment sm : move) {
+            sm.quantity += isPlus ? minQuantity : -minQuantity;
+            if (isPlus) {
+                basePlan[sm.row][sm.col] = sm;
+            } else {
+                if (sm.quantity == 0) {
+                    basePlan[sm.row][sm.col] = null;
+                } else {
+                    basePlan[sm.row][sm.col] = sm;
+                }
+            }
+            isPlus = !isPlus;
+        }
     }
 
     //Маска матрицы a размера MxN, где уже использованный ранее элемент равен 1, иначе - 0
@@ -161,37 +298,33 @@ public class Main {
     }
 
     /* Возвращает сумму опорного плана, найденную с помощью метода минимальной стоимости. */
-    static int[][] minCostMethod(TransportTaskTable table) {
+    static Shipment[][] minCostMethod(TransportTaskTable table) {
         //Матрица опорного плана
-        int[][] basePlan = new int[table.storageAmount][table.customerAmount];
-
-        //Заполняем матрицу опорного плана "пустыми" клетками
-        fillMatrixWith(-1, table.storageAmount, table.customerAmount, basePlan);
+        Shipment[][] basePlan = new Shipment[table.storage.length][table.need.length];
 
         while (!Arrays.stream(table.storage).allMatch(el -> el == 0) && !Arrays.stream(table.need).allMatch(el -> el == 0)) {
-            final Tuple<Integer> min = findMinMatrix(table.storageAmount, table.customerAmount, table.cost);
+            final Tuple<Integer> min = findMinMatrix(table.storage.length, table.need.length, table.cost);
 
             if (table.storage[min.x] != 0 && table.need[min.y] != 0) {
                 //Если потребность заказчика равна запасу скалада
                 if (table.storage[min.x] == table.need[min.y]) {
-                    basePlan[min.x][min.y] = table.storage[min.x];
+                    basePlan[min.x][min.y] = new Shipment(table.cost[min.x][min.y], min.x, min.y, table.storage[min.x]);
                     table.storage[min.x] = table.need[min.y] = 0;
                 }
                 //Иначе, если запас скалада больше потребности заказчика
                 else if (table.storage[min.x] > table.need[min.y]) {
                     table.storage[min.x] -= table.need[min.y];
-                    basePlan[min.x][min.y] = table.need[min.y];
+                    basePlan[min.x][min.y] = new Shipment(table.cost[min.x][min.y], min.x, min.y, table.need[min.y]);
                     table.need[min.y] = 0;
                 }
                 //Иначе, если потребность заказчика больше запаса склада
                 else if (table.need[min.y] > table.storage[min.x]) {
                     table.need[min.y] -= table.storage[min.x];
-                    basePlan[min.x][min.y] = table.storage[min.x];
+                    basePlan[min.x][min.y] = new Shipment(table.cost[min.x][min.y], min.x, min.y, table.storage[min.x]);
                     table.storage[min.x] = 0;
                 }
             }
         }
-
         return basePlan;
     }
 
@@ -260,27 +393,28 @@ public class Main {
         return indexMax;
     }
 
-    public static void calculateDiffs(TransportTaskTable table, int[] minDiffStorageValues, int[] minDiffCustomerValues) {
+    public static void calculateDiffs(TransportTaskTable table,
+                                      int[] minDiffStorageValues,
+                                      int[] minDiffCustomerValues) {
         //Подсчёт разности по строкам
-        for (int i = 0; i < table.storageAmount; ++i) {
-            final Tuple<Integer> storageMinValues = findTwoMinValues(table.customerAmount, table.cost[i], table.need);
+        for (int i = 0; i < table.storage.length; ++i) {
+            final Tuple<Integer> storageMinValues = findTwoMinValues(table.need.length,
+                    table.cost[i],
+                    table.need);
 
-            if (table.storage[i] != 0) {
-                minDiffStorageValues[i] = storageMinValues.y - storageMinValues.x;
-            } else {
-                minDiffStorageValues[i] = -1;
-            }
+            if (table.storage[i] != 0) minDiffStorageValues[i] = storageMinValues.y - storageMinValues.x;
+            else minDiffStorageValues[i] = -1;
         }
 
         //Подсчёт разности по столбцам
-        for (int j = 0; j < table.customerAmount; ++j) {
-            final Tuple<Integer> customerMinValues = findTwoMinValuesInCol(table.storageAmount, table.cost, j, table.storage);
+        for (int j = 0; j < table.need.length; ++j) {
+            final Tuple<Integer> customerMinValues = findTwoMinValuesInCol(table.storage.length,
+                    table.cost,
+                    j,
+                    table.storage);
 
-            if (table.need[j] != 0) {
-                minDiffCustomerValues[j] = customerMinValues.y - customerMinValues.x;
-            } else {
-                minDiffCustomerValues[j] = -1;
-            }
+            if (table.need[j] != 0) minDiffCustomerValues[j] = customerMinValues.y - customerMinValues.x;
+            else minDiffCustomerValues[j] = -1;
         }
     }
 
@@ -311,45 +445,56 @@ public class Main {
     }
 
     //Возвращает матрицу опорного плана, найденную с помощью метода "аппроксимации Фогеля"
-    static int[][] vogelApproximationMethod(TransportTaskTable table) {
+    static Shipment[][] vogelApproximationMethod(TransportTaskTable table) {
         //Массив дельт для складов
-        int[] diffStorageValues = new int[table.storageAmount];
+        int[] diffStorageValues = new int[table.storage.length];
+
         //Массив дельт для заказчиков
-        int[] diffCustomerValues = new int[table.customerAmount];
+        int[] diffCustomerValues = new int[table.need.length];
 
         //Матрица опорного плана
-        int[][] basePlan = new int[table.storageAmount][table.customerAmount];
+        Shipment[][] basePlan = new Shipment[table.storage.length][table.need.length];
 
-        while (true) {
+        do {
             calculateDiffs(table, diffStorageValues, diffCustomerValues);
 
-            final int indexMaxStorageDiff = getIndexMax(table.storageAmount, diffStorageValues);
-            final int indexMaxNeedDiff = getIndexMax(table.customerAmount, diffCustomerValues);
+            final int indexMaxStorageDiff = getIndexMax(table.storage.length, diffStorageValues);
+            final int indexMaxNeedDiff = getIndexMax(table.need.length, diffCustomerValues);
 
             if (diffStorageValues[indexMaxStorageDiff] >= diffCustomerValues[indexMaxNeedDiff]) {
-                final int indexMinRow = getIndexMinRow(table.customerAmount, table.cost, indexMaxStorageDiff, table.need);
-                storageBiggerThanNeedCase(table.need, table.storage, basePlan, indexMaxStorageDiff, indexMinRow);
+                final int indexMinRow = getIndexMinRow(table.need.length, table.cost, indexMaxStorageDiff, table.need);
+                lol(table, basePlan, indexMaxStorageDiff, indexMinRow);
             } else {
-                final int indexMinCol = getIndexMinCol(table.storageAmount, table.cost, indexMaxNeedDiff);
-                storageBiggerThanNeedCase(table.need, table.storage, basePlan, indexMinCol, indexMaxNeedDiff);
+                final int indexMinCol = getIndexMinCol(table.storage.length, table.cost, indexMaxNeedDiff);
+                lol(table, basePlan, indexMinCol, indexMaxNeedDiff);
             }
 
-            if (Arrays.stream(table.storage).allMatch(el -> el == 0) && Arrays.stream(table.need).allMatch(el -> el == 0))
-                break;
-        }
+        } while (!isAllConditionsMet(table));
 
         return basePlan;
     }
 
-    private static void storageBiggerThanNeedCase(int[] need, int[] storage, int[][] basePlan, int index_of_max_elem_storage_diffs, int min_j) {
-        if (storage[index_of_max_elem_storage_diffs] >= need[min_j]) {
-            basePlan[index_of_max_elem_storage_diffs][min_j] = need[min_j];
-            storage[index_of_max_elem_storage_diffs] -= need[min_j];
-            need[min_j] = 0;
+
+    /**
+     * Проверяет удовлетворённость всех условий для нахождения опорного плана.
+     *
+     * @param table таблица транспортной задачи
+     * @return Истину, если все потребности удовлетворены и все склады пустые,
+     * иначе - ложь
+     */
+    private static boolean isAllConditionsMet(TransportTaskTable table) {
+        return Arrays.stream(table.storage).allMatch(el -> el == 0) && Arrays.stream(table.need).allMatch(el -> el == 0);
+    }
+
+    private static void lol(TransportTaskTable table, Shipment[][] basePlan, int i, int j) {
+        if (table.storage[i] >= table.need[j]) {
+            basePlan[i][j] = new Shipment(table.cost[i][j], i, j, table.need[j]);
+            table.storage[i] -= table.need[j];
+            table.need[j] = 0;
         } else {
-            basePlan[index_of_max_elem_storage_diffs][min_j] = storage[index_of_max_elem_storage_diffs];
-            need[min_j] -= storage[index_of_max_elem_storage_diffs];
-            storage[index_of_max_elem_storage_diffs] = 0;
+            basePlan[i][j] = new Shipment(table.cost[i][j], i, j, table.storage[i]);
+            table.need[j] -= table.storage[i];
+            table.storage[i] = 0;
         }
     }
 
@@ -373,83 +518,59 @@ public class Main {
     }
 
     //Возвращает опорный план, найденный методом "двойного предпочтения".
-    static int[][] doublePreferenceMethod(TransportTaskTable table) {
-        //Маска матрицы
-        int[][] mask = new int[table.storageAmount][table.customerAmount];
-        //Матрица опорного плана
-        int[][] basePlan = new int[table.storageAmount][table.customerAmount];
-        fillMatrixWith(-1, table.storageAmount, table.customerAmount, basePlan);
+    static Shipment[][] doublePreferenceMethod(TransportTaskTable table) {
+        //Маска матрицы опорного плана
+        int[][] mask = new int[table.storage.length][table.need.length];
 
-        while (!Arrays.stream(table.storage).allMatch(el -> el == 0) && !Arrays.stream(table.need).allMatch(el -> el == 0)) {
+        //Матрица опорного плана
+        Shipment[][] basePlan = new Shipment[table.storage.length][table.need.length];
+
+        do {
             //Заполнение маски нулями
-            fillMatrixWith(0, table.storageAmount, table.customerAmount, mask);
+            fillMatrixWith(0, table.storage.length, table.need.length, mask);
 
             setRowPriorities(table, mask);
             setColPriorities(table, mask);
 
-            Tuple<Integer> indexMaxPriorityCell = findMaxMatrixMask(table.storageAmount, table.customerAmount, mask);
+            Tuple<Integer> indexMaxPriorityCell = findMaxMatrixMask(table.storage.length, table.need.length, mask);
 
             int currMaxStorage = table.storage[indexMaxPriorityCell.x];
             int currMaxNeed = table.need[indexMaxPriorityCell.y];
 
             if (currMaxStorage != 0 && currMaxNeed != 0) {
                 if (currMaxStorage >= currMaxNeed) {
-                    basePlan[indexMaxPriorityCell.x][indexMaxPriorityCell.y] = currMaxNeed;
+                    basePlan[indexMaxPriorityCell.x][indexMaxPriorityCell.y] = new Shipment(
+                            table.cost[indexMaxPriorityCell.x][indexMaxPriorityCell.y],
+                            indexMaxPriorityCell.x,
+                            indexMaxPriorityCell.y,
+                            currMaxNeed);
                     table.storage[indexMaxPriorityCell.x] -= table.need[indexMaxPriorityCell.y];
                     table.need[indexMaxPriorityCell.y] = 0;
                 } else {
-                    basePlan[indexMaxPriorityCell.x][indexMaxPriorityCell.y] = currMaxStorage;
+                    basePlan[indexMaxPriorityCell.x][indexMaxPriorityCell.y] = new Shipment(
+                            table.cost[indexMaxPriorityCell.x][indexMaxPriorityCell.y],
+                            indexMaxPriorityCell.x,
+                            indexMaxPriorityCell.y,
+                            currMaxStorage);
                     table.need[indexMaxPriorityCell.y] -= table.storage[indexMaxPriorityCell.x];
                     table.storage[indexMaxPriorityCell.x] = 0;
                 }
             }
-        }
-
-        //Если остались неудовлетворённые потребности и непустые склады
-        if (!Arrays.stream(table.storage).allMatch(el -> el == 0) && !Arrays.stream(table.need).allMatch(el -> el == 0)) {
-            for (int i = 0; i < table.storageAmount; ++i) {
-                for (int j = 0; j < table.customerAmount; ++j) {
-                    //Если потребность заказчика удовлетворена
-                    if (table.need[j] == 0) continue;
-
-                    //Если запасы склада равны нулю
-                    if (table.storage[i] == 0) break;
-
-                    //Если потребность заказчика больше чем запасы склада
-                    if (table.need[j] >= table.storage[i]) {
-                        basePlan[i][j] = table.storage[i];
-                        table.need[j] -= table.storage[i];
-                        table.storage[i] = 0;
-                    }
-
-                    //Если потребность заказчика меньше чем запасы склада
-                    if (table.need[j] < table.storage[i]) {
-                        basePlan[i][j] = table.need[j];
-                        table.storage[i] -= table.need[j];
-                        table.need[j] = 0;
-                    }
-
-                    //Если все потребности удовлетворены и все запасы складов закончились
-                    if (Arrays.stream(table.storage).allMatch(el -> el == 0) && Arrays.stream(table.need).allMatch(el -> el == 0))
-                        return basePlan;
-                }
-
-            }
-        }
+        } while (!isAllConditionsMet(table));
 
         return basePlan;
     }
 
     private static void setColPriorities(TransportTaskTable table, int[][] mask) {
-        for (int j = 0; j < table.customerAmount; j++) {
+        for (int j = 0; j < table.need.length; j++) {
             if (table.need[j] != 0) {
                 int min = Integer.MAX_VALUE;
 
-                for (int i = 0; i < table.storageAmount; ++i) {
+                for (int i = 0; i < table.storage.length; ++i) {
                     if (table.cost[i][j] < min && table.storage[i] != 0) min = table.cost[i][j];
                 }
 
-                for (int i = table.storageAmount - 1; i >= 0; i--) {
+                for (int i = table.storage.length - 1; i >= 0; i--) {
                     if (table.cost[i][j] == min) {
                         mask[i][j]++;
                         break;
@@ -460,15 +581,15 @@ public class Main {
     }
 
     private static void setRowPriorities(TransportTaskTable table, int[][] mask) {
-        for (int i = 0; i < table.storageAmount; i++) {
+        for (int i = 0; i < table.storage.length; i++) {
             if (table.storage[i] != 0) {
                 int min = Integer.MAX_VALUE;
 
-                for (int j = 0; j < table.customerAmount; j++) {
+                for (int j = 0; j < table.need.length; j++) {
                     if (table.cost[i][j] < min && table.need[j] != 0) min = table.cost[i][j];
                 }
 
-                for (int j = table.customerAmount - 1; j >= 0; j--) {
+                for (int j = table.need.length - 1; j >= 0; j--) {
                     if (table.cost[i][j] == min && table.need[j] != 0) {
                         mask[i][j]++;
                         break;
@@ -476,372 +597,6 @@ public class Main {
                 }
             }
         }
-    }
-
-    /**
-     * Завершённость цикла: если 0, то цикл не завершён,
-     * если 1, то цикл завершён.
-     */
-    static boolean isLoopDone = false;
-
-    /** Строит линию цикла, направленную вправо
-     * @param storageAmount количество складов
-     * @param customerAmount - количество потребителей
-     * @param loopMask маска перерасчёта
-     * @param basePlan опорный план транспортной задачи
-     * @param isPlus если true, то в клетку ставится "+", иначе - "-"
-     * @param indexFirstNode матричные индексы самого первого узла перерасчёта
-     * @param indexLastNode матричные индексы самого последнего узла перерасчёта
-     */
-    static void buildRightLine(final int storageAmount,
-                        final int customerAmount,
-                        int[][] loopMask,
-                        final int[][] basePlan,
-                        final boolean isPlus,
-                        final Tuple<Integer> indexFirstNode,
-                        final Tuple<Integer> indexLastNode) {
-        for (int j = indexLastNode.y + 1; j < storageAmount; ++j) {
-            if (isLoopDone || (Objects.equals(indexLastNode.x, indexFirstNode.x) && j == indexFirstNode.y)) {
-                isLoopDone = true;
-                break;
-            }
-            if (!isPlus && loopMask[indexLastNode.x][j] == 1 && basePlan[indexLastNode.x][j] != -1) {
-                loopMask[indexLastNode.x][j] = -2;
-                Tuple<Integer> lastNode = new Tuple<>(indexLastNode.x, j);
-                buildLoopLine(storageAmount,
-                        customerAmount,
-                        loopMask,
-                        basePlan,
-                        true,
-                        1,
-                        3,
-                        indexFirstNode,
-                        lastNode);
-                if (!isLoopDone) loopMask[indexLastNode.x][j] = 1;
-            } else if (isPlus && loopMask[indexLastNode.x][j] == 1) {
-                loopMask[indexLastNode.x][j] = 2;
-                Tuple<Integer> lastNode = new Tuple<>(indexLastNode.x, j);
-                buildLoopLine(storageAmount,
-                        customerAmount,
-                        loopMask,
-                        basePlan,
-                        false,
-                        1,
-                        3,
-                        indexFirstNode,
-                        lastNode);
-                if (!isLoopDone) loopMask[indexLastNode.x][j] = 1;
-            }
-        }
-    }
-
-    /**Строит линию цикла, направленную вверх
-     * @param storageAmount количество складов
-     * @param customerAmount - количество потребителей
-     * @param loopMask маска перерасчёта
-     * @param basePlan опорный план транспортной задачи
-     * @param isPlus если true, то в клетку ставится "+", иначе - "-"
-     * @param indexFirstNode матричные индексы самого первого узла перерасчёта
-     * @param indexLastNode матричные индексы самого последнего узла перерасчёта
-     */
-    static void buildUpLine(final int storageAmount,
-                            final int customerAmount,
-                            int[][] loopMask,
-                            final int[][] basePlan,
-                            final boolean isPlus,
-                            final Tuple<Integer> indexFirstNode,
-                            final Tuple<Integer> indexLastNode) {
-        for (int i = indexLastNode.x - 1; i >= 0; i--) {
-            if (isLoopDone || (i == indexFirstNode.x && Objects.equals(indexLastNode.y, indexFirstNode.y))) {
-                isLoopDone = true;
-                break;
-            }
-            if (!isPlus && loopMask[i][indexLastNode.y] == 1 && basePlan[i][indexLastNode.y] != -1) {
-                loopMask[i][indexLastNode.y] = -2;
-                Tuple<Integer> lastNode = new Tuple<>(i, indexLastNode.y);
-                buildLoopLine(storageAmount,
-                        customerAmount,
-                        loopMask,
-                        basePlan,
-                        true,
-                        2,
-                        4,
-                        indexFirstNode,
-                        lastNode);
-                if (!isLoopDone) loopMask[i][indexLastNode.y] = 1;
-            } else if (isPlus && loopMask[i][indexLastNode.y] == 1) {
-                loopMask[i][indexLastNode.y] = 2;
-                Tuple<Integer> lastNode = new Tuple<>(i, indexLastNode.y);
-                buildLoopLine(storageAmount,
-                        customerAmount,
-                        loopMask,
-                        basePlan,
-                        false,
-                        2,
-                        4,
-                        indexFirstNode,
-                        lastNode);
-                if (!isLoopDone) loopMask[i][indexLastNode.y] = 1;
-            }
-        }
-    }
-
-    /**Строит линию цикла, направленную влево
-     * @param storageAmount количество складов
-     * @param customerAmount - количество потребителей
-     * @param loopMask маска перерасчёта
-     * @param basePlan опорный план транспортной задачи
-     * @param isPlus если true, то в клетку ставится "+", иначе - "-"
-     * @param indexFirstNode матричные индексы самого первого узла перерасчёта
-     * @param indexLastNode матричные индексы самого последнего узла перерасчёта
-     */
-    static void buildLeftLine(final int storageAmount,
-                              final int customerAmount,
-                              int[][] loopMask,
-                              final int[][] basePlan,
-                              final boolean isPlus,
-                              final Tuple<Integer> indexFirstNode,
-                              final Tuple<Integer> indexLastNode) {
-        for (int j = indexLastNode.y - 1; j >= 0; j--) {
-            if (isLoopDone || (Objects.equals(indexLastNode.x, indexFirstNode.x) && j == indexFirstNode.y)) {
-                isLoopDone = true;
-                break;
-            }
-            if (!isPlus && loopMask[indexLastNode.x][j] == 1 && basePlan[indexLastNode.x][j] != -1) {
-                loopMask[indexLastNode.x][j] = -2;
-                Tuple<Integer> lastNode = new Tuple<>(indexLastNode.x, j);
-                buildLoopLine(storageAmount,
-                        customerAmount,
-                        loopMask,
-                        basePlan,
-                        true,
-                        3,
-                        1,
-                        indexFirstNode,
-                        lastNode);
-                if (!isLoopDone) loopMask[indexLastNode.x][j] = 1;
-            } else if (isPlus && loopMask[indexLastNode.x][j] == 1) {
-                loopMask[indexLastNode.x][j] = 2;
-                Tuple<Integer> lastNode = new Tuple<>(indexLastNode.x, j);
-                buildLoopLine(storageAmount,
-                        customerAmount,
-                        loopMask,
-                        basePlan,
-                        false,
-                        3,
-                        1,
-                        indexFirstNode,
-                        lastNode);
-                if (!isLoopDone) loopMask[indexLastNode.x][j] = 1;
-            }
-        }
-    }
-
-    /**Строит линию цикла, направленную вниз
-     * @param storageAmount количество складов
-     * @param customerAmount - количество потребителей
-     * @param loopMask маска перерасчёта
-     * @param basePlan опорный план транспортной задачи
-     * @param isPlus если true, то в клетку ставится "+", иначе - "-"
-     * @param indexFirstNode матричные индексы самого первого узла перерасчёта
-     * @param indexLastNode матричные индексы самого последнего узла перерасчёта
-     */
-    static void buildDownLine(final int storageAmount,
-                              final int customerAmount,
-                              int[][] loopMask,
-                              final int[][] basePlan,
-                              final boolean isPlus,
-                              final Tuple<Integer> indexFirstNode,
-                              final Tuple<Integer> indexLastNode) {
-        for (int i = indexLastNode.x + 1; i < storageAmount; ++i) {
-            if (isLoopDone || i == indexFirstNode.x && Objects.equals(indexFirstNode.y, indexLastNode.y)) {
-                isLoopDone = true;
-                break;
-            }
-            if (!isPlus && loopMask[i][indexLastNode.y] == 1 && basePlan[i][indexLastNode.y] != -1) {
-                loopMask[i][indexLastNode.y] = -2;
-                Tuple<Integer> lastNode = new Tuple<>(i, indexLastNode.y);
-                buildLoopLine(storageAmount,
-                        customerAmount,
-                        loopMask,
-                        basePlan,
-                        true,
-                        4,
-                        2,
-                        indexFirstNode,
-                        lastNode);
-                if (!isLoopDone) loopMask[i][indexLastNode.y] = 1;
-            } else if (isPlus && loopMask[i][indexLastNode.y] == 1) {
-                loopMask[i][indexLastNode.y] = 2;
-                Tuple<Integer> lastNode = new Tuple<>(i, indexLastNode.y);
-                buildLoopLine(storageAmount,
-                        customerAmount,
-                        loopMask,
-                        basePlan,
-                        false,
-                        4,
-                        2,
-                        indexFirstNode,
-                        lastNode);
-                if (!isLoopDone) loopMask[i][indexLastNode.y] = 1;
-            }
-        }
-    }
-
-    /*
-    Строит цикл перерасчёта опорного плана basePlan размера storageAmount на customersAmount,
-    опираясь на loopMask размера storageAmount на customersAmount;
-    Type - если true, то в клетку ставится "+" (+2), если false, то ставится "-" (-2);
-    None_dir - основное направление, по которому нельзя двигаться на данный момент процедуры;
-    Reverse_none_dir - обратное направление, по которому нельзя двигаться на данный момент процедуры;
-    First_node_indexes - кортеж индексов (i,j) самой первой "+"-клетки расчёта;
-    Last_node_indexes - кортеж индексов (i,j) самой последней клетки расчёта
-    */
-    static void buildLoopLine(final int storageAmount,
-                              final int customersAmount,
-                              int[][] loopMask,
-                              final int[][] basePlan,
-                              final boolean isPlus,
-                              final int noneDir,
-                              final int reverseNoneDir,
-                              final Tuple<Integer> indexFirstNode,
-                              final Tuple<Integer> indexLastNode) {
-        //Если расчёт цикла не закончен
-        if (!isLoopDone) {
-            //Если можно двигаться вправо
-            if (noneDir != Dir.RIGHT && reverseNoneDir != Dir.RIGHT) {
-                //Строим линию цикла в правую сторону
-                buildRightLine(storageAmount, customersAmount, loopMask, basePlan, isPlus, indexFirstNode, indexLastNode);
-            }
-        }
-
-        //Если расчёт цикла не закончен
-        if (!isLoopDone) {
-            //Если можно двигаться вверх
-            if (noneDir != Dir.UP && reverseNoneDir != Dir.UP) {
-                //Строим линию цикла вверх
-                buildUpLine(storageAmount, customersAmount, loopMask, basePlan, isPlus, indexFirstNode, indexLastNode);
-            }
-        }
-
-        //Если расчёт цикла не закончен
-        if (!isLoopDone) {
-            //Если можно двигаться влево
-            if (noneDir != Dir.LEFT && reverseNoneDir != Dir.LEFT) {
-                //Строим линию цикла в левую сторону
-                buildLeftLine(storageAmount, customersAmount, loopMask, basePlan, isPlus, indexFirstNode, indexLastNode);
-            }
-        }
-
-        //Если расчёт цикла не закончен
-        if (!isLoopDone) {
-            //Если можно двигаться вниз
-            if (noneDir != Dir.DOWN && reverseNoneDir != Dir.DOWN) {
-                //Строим линию цикла вниз
-                buildDownLine(storageAmount, customersAmount, loopMask, basePlan, isPlus, indexFirstNode, indexLastNode);
-            }
-        }
-    }
-
-    //Производит перерасчёт опорного плана basePlan.
-    static void performReallocation(final int storageAmount,
-                                    final int customersAmount,
-                                    int[][] basePlan,
-                                    final Tuple<Integer> indexMaxAbsDelta) {
-        int[][] loopMask = new int[storageAmount][customersAmount];
-        fillMatrixWith(1, storageAmount, customersAmount, loopMask);
-
-        for (int i = 0; i < storageAmount; ++i) {
-            int filledCells = (int) Arrays.stream(basePlan[i]).filter(value -> value != -1).count();
-
-            if (filledCells <= 1 && i != indexMaxAbsDelta.x) {
-                for (int k = 0; k < storageAmount; ++k) {
-                    loopMask[i][k] = 0;
-                }
-            }
-        }
-
-        for (int j = 0; j < customersAmount; ++j) {
-            int finalJ = j;
-            int filledCells = (int) Arrays.stream(basePlan).filter(ints -> ints[finalJ] != -1).count();
-
-            if (filledCells <= 1 && j != indexMaxAbsDelta.y) {
-                for (int k = 0; k < storageAmount; ++k) {
-                    loopMask[k][j] = 0;
-                }
-            }
-        }
-
-        loopMask[indexMaxAbsDelta.x][indexMaxAbsDelta.y] = 2;
-
-        buildLoopLine(storageAmount,
-                customersAmount,
-                loopMask,
-                basePlan,
-                false,
-                0,
-                0,
-                indexMaxAbsDelta,
-                indexMaxAbsDelta);
-
-        isLoopDone = false;
-
-        recalculateBasePlan(storageAmount, customersAmount, basePlan, loopMask);
-    }
-
-    /*
-    Производит перерасчёт опорного плана basePlan размера storageAmount на customersAmount,
-    опираясь на маску цикла loopMask
-    */
-    static void recalculateBasePlan(final int storageAmount,
-                                    final int customersAmount,
-                                    int[][] basePlan,
-                                    final int[][] loopMask) {
-        //Минимальная перевозка со знаком "-" в loopMask
-        final int min = findMinNegativeNode(storageAmount, customersAmount, basePlan, loopMask);
-        int zeros = 0;
-
-        for (int i = 0; i < storageAmount; ++i) {
-            for (int j = 0; j < customersAmount; ++j) {
-                //Если в узле с индексами (i,j) стоит "+"
-                if (loopMask[i][j] == 2) {
-                    if (basePlan[i][j] == 0) {
-                        zeros++;
-                        basePlan[i][j] += min;
-                    } else if (basePlan[i][j] == -1) {
-                        basePlan[i][j] = 0;
-                        basePlan[i][j] += min;
-                    }
-                }
-                //Иначе, если в узле с индексами (i,j) стоит "-"
-                else if (loopMask[i][j] == -2) {
-                    if (zeros > 0) {
-                        basePlan[i][j] -= min;
-                    } else {
-                        basePlan[i][j] -= min;
-                        if (basePlan[i][j] == 0) basePlan[i][j] = -1;
-                    }
-                }
-            }
-        }
-    }
-
-    //Возвращает минимальную перевозку со знаком "-" в loopMask
-    static int findMinNegativeNode(final int storage_amount,
-                                   final int customers_amount,
-                                   final int[][] basePlan,
-                                   final int[][] loopMask) {
-        int min = Integer.MAX_VALUE;
-        for (int i = 0; i < storage_amount; ++i) {
-            for (int j = 0; j < customers_amount; ++j) {
-                if (loopMask[i][j] == -2) {
-                    if (basePlan[i][j] < min) {
-                        min = basePlan[i][j];
-                    }
-                }
-            }
-        }
-        return min;
     }
 
     /* Возвращает кортеж со значениями (-1,-1), если план оптимальный, иначе - возвращает кортеж (null,null). */
@@ -871,40 +626,51 @@ public class Main {
         return res;
     }
 
+    /**
+     * Конвертирует матрицу опорного плана в ОЛС
+     *
+     * @param basePlan таблица опорного плана
+     * @return ОЛС, получений в процессе конвертирования таблицы опорного плана
+     */
+    static LinkedList<Shipment> matrixToList(Shipment[][] basePlan) {
+        return Arrays.stream(basePlan)
+                .flatMap(Arrays::stream)
+                .filter(Objects::nonNull)
+                .collect(toCollection(LinkedList::new));
+    }
+
     //Выполняет расчёт потенциалов для свободных клеток
-    static void calculateDeltaFreeCells(int storageAmount,
-                                        int customersAmount,
-                                        int[][] basePlan,
-                                        int[][] cost,
+    static void calculateDeltaFreeCells(TransportTaskTable table,
+                                        Shipment[][] basePlan,
                                         int[] u,
                                         int[] v,
                                         int[][] deltaCost) {
-        for (int i = 0; i < storageAmount; ++i) {
-            for (int j = 0; j < customersAmount; ++j) {
-                if (basePlan[i][j] == -1) {
-                    deltaCost[i][j] = cost[i][j] - (u[i] + v[j]);
+        for (int i = 0; i < table.storage.length; ++i) {
+            for (int j = 0; j < table.need.length; ++j) {
+                if (basePlan[i][j] == null) {
+                    deltaCost[i][j] = table.cost[i][j] - (u[i] + v[j]);
                 }
             }
         }
     }
 
     //Выполняет подсчёт потенциалов для базисных (занятых) клеток.
-    public static void calculateDeltaBasicCells(int storageAmount,
-                                                int customersAmount,
-                                                int[][] basePlan,
-                                                int[][] cost,
+    public static void calculateDeltaBasicCells(TransportTaskTable table,
+                                                Shipment[][] basePlan,
                                                 int[] u,
                                                 int[] v) {
         boolean[] uMask = new boolean[u.length];
         boolean[] vMask = new boolean[v.length];
+
+        u[0] = 0;
         uMask[0] = true;
 
         LinkedList<Integer> t1 = new LinkedList<>();
         LinkedList<Integer> t2 = new LinkedList<>();
 
-        for (int j = 0; j < customersAmount; j++) {
-            if (basePlan[0][j] != -1 && !vMask[j]) {
-                v[j] = cost[0][j] - u[0];
+        for (int j = 0; j < table.need.length; j++) {
+            if (basePlan[0][j] != null && !vMask[j]) {
+                v[j] = table.cost[0][j] - u[0];
                 vMask[j] = true;
                 t1.push(j);
             }
@@ -913,9 +679,9 @@ public class Main {
         do {
             while (!t1.isEmpty()) {
                 int j = t1.pop();
-                for (int i = 0; i < storageAmount; i++) {
-                    if (basePlan[i][j] != -1) {
-                        u[i] = cost[i][j] - v[j];
+                for (int i = 0; i < table.storage.length; i++) {
+                    if (basePlan[i][j] != null) {
+                        u[i] = table.cost[i][j] - v[j];
                         uMask[i] = true;
                         t2.push(i);
                     }
@@ -924,9 +690,9 @@ public class Main {
 
             while (!t2.isEmpty()) {
                 int i = t2.pop();
-                for (int j = 0; j < customersAmount; j++) {
-                    if (basePlan[i][j] != -1) {
-                        v[j] = cost[i][j] - u[i];
+                for (int j = 0; j < table.need.length; j++) {
+                    if (basePlan[i][j] != null) {
+                        v[j] = table.cost[i][j] - u[i];
                         vMask[j] = true;
                         t1.push(j);
                     }
@@ -947,66 +713,35 @@ public class Main {
     Метод потенциалов.
     Приводит заданный опорный план basePlan к оптимальному плану.
     */
-    static void potentialMethod(int[][] basePlan, final int storageAmount, final int customersAmount, final int[][] cost) {
-        int[] u = new int[storageAmount];
-        int[] v = new int[customersAmount];
+    static boolean isOptimal(TransportTaskTable table, Shipment[][] basePlan) {
+        int[] u = new int[table.storage.length];
+        int[] v = new int[table.need.length];
 
-        while (true) {
-            for (int i = 0; i < storageAmount; i++) {
-                u[i] = -1;
-            }
+        for (int i = 0; i < table.storage.length; i++) u[i] = -1;
+        for (int i = 0; i < table.need.length; i++) v[i] = -1;
 
-            for (int i = 0; i < customersAmount; i++) {
-                v[i] = -1;
-            }
+        calculateDeltaBasicCells(table, basePlan, u, v);
 
-            u[0] = 0;
+        int[][] deltaCost = new int[table.storage.length][table.need.length];
 
-            calculateDeltaBasicCells(storageAmount, customersAmount, basePlan, cost, u, v);
+        calculateDeltaFreeCells(table, basePlan, u, v, deltaCost);
 
-            int[][] deltaCost = new int[storageAmount][customersAmount];
+        Tuple<Integer> indexMaxAbsDelta = isOptimalBasePlan(table.storage.length, table.need.length, deltaCost);
 
-            calculateDeltaFreeCells(storageAmount, customersAmount, basePlan, cost, u, v, deltaCost);
-
-            Tuple<Integer> indexMaxAbsDelta = isOptimalBasePlan(storageAmount, customersAmount, deltaCost);
-
-            if (indexMaxAbsDelta.x != null && indexMaxAbsDelta.y != null) {
-                performReallocation(storageAmount, customersAmount, basePlan, indexMaxAbsDelta);
-            } else break;
-        }
-    }
-
-    //Возвращает истину, если план является вырожденным, иначе - ложь.
-    boolean isDegeneratePlan(int storageAmount, int customersAmount, int[][] basePlan) {
-        int need_base_plan_cells = storageAmount + customersAmount - 1, base_plan_cells = 0;
-
-        for (int i = 0; i < storageAmount; ++i) {
-            for (int j = 0; j < customersAmount; ++j) {
-                if (basePlan[i][j] != -1) base_plan_cells++;
-            }
-        }
-
-        return base_plan_cells == need_base_plan_cells;
-    }
-
-    void makeDegeneratePlan(int storageAmount, int customersAmount, int[][] basePlan) {
-        for (int i = 0; i < storageAmount; ++i) {
-            for (int j = 0; j < customersAmount; ++j) {
-            }
-        }
+        return indexMaxAbsDelta.x == null || indexMaxAbsDelta.y == null;
     }
 
     /*
      Возвращает сумму опорного плана матрицы опорного плана
      basePlan размера MxN с использованием матрицы стоимостей cost размера MxN.
      */
-    static int calculateBasePlan(int m, int n, int[][] cost, int[][] basePlan) {
+    static int calculateBasePlan(int m, int n, int[][] cost, Shipment[][] basePlan) {
         int res = 0;
 
         for (int i = 0; i < m; ++i) {
             for (int j = 0; j < n; ++j) {
-                if (basePlan[i][j] != -1) {
-                    res += cost[i][j] * basePlan[i][j];
+                if (basePlan[i][j] != null) {
+                    res += cost[i][j] * basePlan[i][j].quantity;
                 }
             }
         }
@@ -1061,6 +796,7 @@ public class Main {
             //Если у нас потребностей больше, чем есть на складах
             case -1 -> fictionalStorageCase(sumOfAllNeeds - sumOfAllStorage, table);
 
+            //Остальные случаи
             default -> {
                 try {
                     throw new Exception("Неверный problemType");
@@ -1074,11 +810,9 @@ public class Main {
     private static void fictionalCustomerCase(int delta, TransportTaskTable table) {
         table.setNeed(add(table.need, delta));
 
-        for (int i = 0; i < table.storageAmount; i++) {
+        for (int i = 0; i < table.storage.length; i++) {
             table.cost[i] = add(table.cost[i], 0);
         }
-
-        table.customerAmount++;
     }
 
     private static void fictionalStorageCase(int delta, TransportTaskTable table) {
@@ -1086,11 +820,9 @@ public class Main {
 
         List<int[]> newCost = Arrays.stream(table.cost).collect(Collectors.toList());
 
-        newCost.add(new int[table.customerAmount]);
+        newCost.add(new int[table.need.length]);
 
         table.setCost(newCost.toArray(new int[0][0]));
-
-        table.storageAmount++;
     }
 
     public static void main(String[] args) {
@@ -1114,11 +846,7 @@ public class Main {
         int[][] cost = new int[storageAmount][customersAmount];
         inputMatrix(storageAmount, customersAmount, cost);
 
-        TransportTaskTable table = new TransportTaskTable(
-                storage, storageAmount,
-                need, customersAmount,
-                cost
-        );
+        TransportTaskTable table = new TransportTaskTable(storage, need, cost);
 
         final int sumAllStorages = Arrays.stream(storage).sum();
         final int sumAllNeeds = Arrays.stream(need).sum();
@@ -1139,7 +867,7 @@ public class Main {
                 3.Метод аппроксимации Фогеля
                 4.Метод двойного предпочтения""");
 
-        int[][] basePlan;
+        Shipment[][] basePlan;
 
         switch (in.nextByte()) {
             case 1 -> basePlan = northWestMethod(table);
@@ -1149,12 +877,16 @@ public class Main {
             default -> throw new IllegalStateException("Unexpected value");
         }
 
-        //Получаем матрицу опорного плана
-        System.out.println(calculateBasePlan(storageAmount, customersAmount, cost, basePlan));
+        System.out.println(calculateBasePlan(storageAmount, customersAmount, table.cost, basePlan));
 
-        //Проверяем план на оптимальность
-        potentialMethod(basePlan, table.storageAmount, table.customerAmount, cost);
+        assert basePlan != null;
 
-        System.out.println(calculateBasePlan(storageAmount, customersAmount, cost, basePlan));
+        fixDegenerate(table, basePlan);
+        while (!isOptimal(table, basePlan)) {
+            steppingStone(table, basePlan);
+            fixDegenerate(table, basePlan);
+        }
+
+        System.out.println(calculateBasePlan(storageAmount, customersAmount, table.cost, basePlan));
     }
 }
