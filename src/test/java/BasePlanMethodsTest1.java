@@ -1,7 +1,9 @@
+import methods.MethodUseCase;
 import model.TransportTaskTable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import utils.UtilUseCase;
 
 class BasePlanMethodsTest1 {
     private TransportTaskTable table;
@@ -21,21 +23,21 @@ class BasePlanMethodsTest1 {
     @Test
     void northWestMethodTest() {
         int expected = 47;
-        int actual = Main.calculateBasePlan(3, 3, table.cost, Main.northWestMethod(table));
+        int actual = UtilUseCase.calculateBasePlan(3, 3, table.cost, MethodUseCase.northWestMethod(table));
         Assertions.assertEquals(expected, actual);
     }
 
     @Test
     void minCostMethod() {
         int expected = 50;
-        int actual = Main.calculateBasePlan(3, 3, table.cost, Main.minCostMethod(table));
+        int actual = UtilUseCase.calculateBasePlan(3, 3, table.cost, MethodUseCase.minCostMethod(table));
         Assertions.assertEquals(expected, actual);
     }
 
     @Test
     void vogelApproximationMethod() {
         int expected = 45;
-        int actual = Main.calculateBasePlan(3, 3, table.cost, Main.vogelApproximationMethod(table));
+        int actual = UtilUseCase.calculateBasePlan(3, 3, table.cost, MethodUseCase.vogelApproximationMethod(table));
         Assertions.assertEquals(expected, actual);
     }
 

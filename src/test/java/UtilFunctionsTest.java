@@ -1,6 +1,8 @@
 import model.TransportTaskTable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import utils.Tuple;
+import utils.UtilUseCase;
 
 import java.util.Arrays;
 
@@ -17,7 +19,7 @@ class UtilFunctionsTest {
 
         int[][] actual = new int[4][4];
 
-        Main.fillMatrixWith(2, 4, 4, actual);
+        UtilUseCase.fillMatrixWith(2, 4, 4, actual);
 
         Assertions.assertTrue(Arrays.stream(actual).allMatch(ints -> Arrays.stream(ints).allMatch(v -> v == 2)));
     }
@@ -36,7 +38,7 @@ class UtilFunctionsTest {
         int[] arrMask = new int[] {1, 1, 0, 1, 1, 0, 1};
 
         Tuple<Integer> expected = new Tuple<>(1, 2);
-        Tuple<Integer> actual = Main.findTwoMinValues(7, arr, arrMask);
+        Tuple<Integer> actual = UtilUseCase.findTwoMinValues(7, arr, arrMask);
 
         Assertions.assertEquals(expected.x, actual.x);
         Assertions.assertEquals(expected.y, actual.y);
@@ -52,7 +54,7 @@ class UtilFunctionsTest {
         int[] arr2 = new int[] {6, 7, 2, 1, 13, 6, 0, 0};
 
         int expected1 = 2, expected2 = 4;
-        int actual1 = Main.getIndexMax(8, arr1), actual2 = Main.getIndexMax(8, arr2);
+        int actual1 = UtilUseCase.getIndexMax(8, arr1), actual2 = UtilUseCase.getIndexMax(8, arr2);
 
         Assertions.assertEquals(expected1, actual1);
         Assertions.assertEquals(expected2, actual2);
@@ -75,7 +77,7 @@ class UtilFunctionsTest {
         int[] actualMinDiffStorageValues = new int[3];
         int[] actualMinDiffCustomerValues = new int[3];
 
-        Main.calculateDiffs(table, actualMinDiffStorageValues, actualMinDiffCustomerValues);
+        UtilUseCase.calculateDiffs(table, actualMinDiffStorageValues, actualMinDiffCustomerValues);
 
         Assertions.assertArrayEquals(expectedMinDiffCustomerValues, actualMinDiffCustomerValues);
         Assertions.assertArrayEquals(expectedMinDiffStorageValues, actualMinDiffStorageValues);
@@ -114,8 +116,8 @@ class UtilFunctionsTest {
         Tuple<Integer> expected1 = new Tuple<>(2, 2);
         Tuple<Integer> expected2 = new Tuple<>(null, null);
 
-        Tuple<Integer> actual1 = Main.isOptimalBasePlan(4, 3, deltaCost1);
-        Tuple<Integer> actual2 = Main.isOptimalBasePlan(3, 2, deltaCost2);
+        Tuple<Integer> actual1 = UtilUseCase.isOptimalBasePlan(4, 3, deltaCost1);
+        Tuple<Integer> actual2 = UtilUseCase.isOptimalBasePlan(3, 2, deltaCost2);
 
         Assertions.assertAll(() -> {
             Assertions.assertEquals(expected1.x, actual1.x);
@@ -133,9 +135,9 @@ class UtilFunctionsTest {
         boolean[] arr3 = new boolean[] {false, true, true, true};
 
         Assertions.assertAll(() -> {
-            Assertions.assertFalse(Main.isAllTrue(arr1, 5));
-            Assertions.assertTrue(Main.isAllTrue(arr2, 6));
-            Assertions.assertFalse(Main.isAllTrue(arr3, 4));
+            Assertions.assertFalse(UtilUseCase.isAllTrue(arr1, 5));
+            Assertions.assertTrue(UtilUseCase.isAllTrue(arr2, 6));
+            Assertions.assertFalse(UtilUseCase.isAllTrue(arr3, 4));
         });
     }
 
