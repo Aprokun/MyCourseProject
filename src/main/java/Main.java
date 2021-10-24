@@ -57,7 +57,7 @@ public class Main {
 
         System.out.println(calculateBasePlan(storageAmount, customersAmount, table.cost, basePlan));
 
-        fixDegenerate(table, basePlan);
+        while (isDegenerate(basePlan)) fixDegenerate(table, basePlan);
 
         while (!isOptimal(table, basePlan)) {
             steppingStone(table, basePlan);

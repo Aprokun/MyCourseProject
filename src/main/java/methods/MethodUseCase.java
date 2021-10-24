@@ -101,10 +101,10 @@ public class MethodUseCase {
             final int indexMaxNeedDiff = getIndexMax(table.need.length, diffCustomerValues);
 
             if (diffStorageValues[indexMaxStorageDiff] >= diffCustomerValues[indexMaxNeedDiff]) {
-                final int indexMinRow = getIndexMinRow(table.need.length, table.cost, indexMaxStorageDiff, table.need);
+                final int indexMinRow = getIndexMinRow(table.cost, indexMaxStorageDiff, table.need);
                 lol(table, basePlan, indexMaxStorageDiff, indexMinRow);
             } else {
-                final int indexMinCol = getIndexMinCol(table.storage.length, table.cost, indexMaxNeedDiff, table.storage);
+                final int indexMinCol = getIndexMinCol(table.cost, indexMaxNeedDiff, table.storage);
                 lol(table, basePlan, indexMinCol, indexMaxNeedDiff);
             }
 

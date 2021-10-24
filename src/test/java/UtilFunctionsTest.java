@@ -100,35 +100,6 @@ class UtilFunctionsTest {
     }
 
     @Test
-    void isOptimalBasePlanTest() {
-        int[][] deltaCost1 = new int[][] {
-                {1, 0, 0},
-                {18, 0, 3},
-                {9, 7, -7},
-                {0, -1, 1}
-        };
-        int[][] deltaCost2 = new int[][] {
-                {3, 0},
-                {7, 7},
-                {0, 0}
-        };
-
-        Tuple<Integer> expected1 = new Tuple<>(2, 2);
-        Tuple<Integer> expected2 = new Tuple<>(null, null);
-
-        Tuple<Integer> actual1 = UtilUseCase.isOptimalBasePlan(4, 3, deltaCost1);
-        Tuple<Integer> actual2 = UtilUseCase.isOptimalBasePlan(3, 2, deltaCost2);
-
-        Assertions.assertAll(() -> {
-            Assertions.assertEquals(expected1.x, actual1.x);
-            Assertions.assertEquals(expected1.y, actual1.y);
-
-            Assertions.assertEquals(expected2.x, actual2.x);
-            Assertions.assertEquals(expected2.y, actual2.y);
-        });
-    }
-
-    @Test
     void isAllTrueTest() {
         boolean[] arr1 = new boolean[] {true, true, true, false, true};
         boolean[] arr2 = new boolean[] {true, true, true, true, true, true};
