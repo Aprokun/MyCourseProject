@@ -11,7 +11,6 @@ import static java.util.stream.Collectors.toCollection;
 public class UtilUseCase {
     public static final Scanner in = new Scanner(System.in);
 
-
     /**
      * Тип транспортной задачи.
      * 1 - закрытая задача;
@@ -97,7 +96,9 @@ public class UtilUseCase {
     }
 
 
-    /** Проверка опорного плана на вырожденность.
+    /**
+     * Проверка опорного плана на вырожденность.
+     *
      * @param basePlan опорный план.
      * @return Истину, если опорный план является вырожденным, иначе - ложь.
      */
@@ -116,9 +117,9 @@ public class UtilUseCase {
     public static void fixDegenerate(TransportTaskTable table, Shipment[][] basePlan) {
         final int eps = 0;
 
-        if (table.storage.length + table.need.length - 1 != matrixToList(basePlan).size()) {
-            for (int i = 0; i < table.storage.length; i++) {
-                for (int j = 0; j < table.need.length; j++) {
+        if (table.supply.length + table.demand.length - 1 != matrixToList(basePlan).size()) {
+            for (int i = 0; i < table.supply.length; i++) {
+                for (int j = 0; j < table.demand.length; j++) {
                     //Если клетка пустая
                     if (basePlan[i][j] == null) {
                         //Создаём фиктивную перевозку
@@ -286,7 +287,7 @@ public class UtilUseCase {
      * @param n    размера массива.
      * @param a    массив.
      * @param need вспомогательный массив потребностей.
-     * @return Кортеж из двух минимальных элементов (x, y), где x < y.
+     * @return Кортеж из двух минимальных элементов (x, y), где x &lt; y.
      */
     public static Tuple<Integer> findTwoMinValues(final int n, final int[] a, final int[] need) {
         int min1 = Integer.MAX_VALUE, min2 = Integer.MAX_VALUE;
@@ -319,7 +320,7 @@ public class UtilUseCase {
      * @param a       матрица.
      * @param col     столбец, в котором осуществляется поиск.
      * @param storage вспомогательный массив складов.
-     * @return Кортеж из двух минимальных элементов (x, y), где x < y.
+     * @return Кортеж из двух минимальных элементов (x, y), где x &lt; y.
      */
     static Tuple<Integer> findTwoMinValuesInCol(final int m, final int[][] a, final int col, final int[] storage) {
         int min1 = Integer.MAX_VALUE, min2 = Integer.MAX_VALUE;
@@ -345,7 +346,9 @@ public class UtilUseCase {
     }
 
 
-    /** Поиск индекса максимального элемента массива.
+    /**
+     * Поиск индекса максимального элемента массива.
+     *
      * @param n длина массива.
      * @param a массив.
      * @return Индекс максимального элемента массива.
@@ -364,45 +367,49 @@ public class UtilUseCase {
     }
 
 
-    /** Подсчёт разниц двух минимальных элементов для строк/столбцов.
+    /**
+     * Подсчёт разниц двух минимальных элементов для строк/столбцов.
      * Используется в методе аппроксимации Фогеля. После использования заполняет
      * массивы, передающиеся в качестве параметров.
-     * @param table таблица транспортной задачи.
-     * @param minDiffStorageValues массив разниц строк.
+     *
+     * @param table                 таблица транспортной задачи.
+     * @param minDiffStorageValues  массив разниц строк.
      * @param minDiffCustomerValues массив разниц столбцов.
      */
     public static void calculateDiffs(TransportTaskTable table,
                                       int[] minDiffStorageValues,
                                       int[] minDiffCustomerValues) {
         //Подсчёт разности по строкам
-        for (int i = 0; i < table.storage.length; ++i) {
-            final Tuple<Integer> storageMinValues = findTwoMinValues(table.need.length,
+        for (int i = 0; i < table.supply.length; ++i) {
+            final Tuple<Integer> storageMinValues = findTwoMinValues(table.demand.length,
                     table.cost[i],
-                    table.need);
+                    table.demand);
 
-            if (table.storage[i] != 0) minDiffStorageValues[i] = storageMinValues.y - storageMinValues.x;
+            if (table.supply[i] != 0) minDiffStorageValues[i] = storageMinValues.y - storageMinValues.x;
             else minDiffStorageValues[i] = -1;
         }
 
         //Подсчёт разности по столбцам
-        for (int j = 0; j < table.need.length; ++j) {
-            final Tuple<Integer> customerMinValues = findTwoMinValuesInCol(table.storage.length,
+        for (int j = 0; j < table.demand.length; ++j) {
+            final Tuple<Integer> customerMinValues = findTwoMinValuesInCol(table.supply.length,
                     table.cost,
                     j,
-                    table.storage);
+                    table.supply);
 
-            if (table.need[j] != 0) minDiffCustomerValues[j] = customerMinValues.y - customerMinValues.x;
+            if (table.demand[j] != 0) minDiffCustomerValues[j] = customerMinValues.y - customerMinValues.x;
             else minDiffCustomerValues[j] = -1;
         }
     }
 
-    /** Поиск минимального элемента в строке.
-     * @param cost матрица стоимостей.
-     * @param row индекс строки.
+    /**
+     * Поиск минимального элемента в строке.
+     *
+     * @param cost   матрица стоимостей.
+     * @param row    индекс строки.
      * @param demand вспомогательный массив потребностей.
      * @return Индекс минимального элемента в строке
      */
-    public static int getIndexMinRow( int[][] cost, int row, int[] demand) {
+    public static int getIndexMinRow(int[][] cost, int row, int[] demand) {
         int min = Integer.MAX_VALUE, min_i = Integer.MAX_VALUE;
 
         for (int i = 0; i < demand.length; ++i) {
@@ -415,9 +422,11 @@ public class UtilUseCase {
         return min_i;
     }
 
-    /** Поиск минимального элемента в столбце.
-     * @param cost матрица стоимостей.
-     * @param col индекс столбца.
+    /**
+     * Поиск минимального элемента в столбце.
+     *
+     * @param cost   матрица стоимостей.
+     * @param col    индекс столбца.
      * @param supply вспомогательный массив складов.
      * @return Индекс минимального элемента в столбце.
      */
@@ -442,23 +451,32 @@ public class UtilUseCase {
      * иначе - ложь
      */
     public static boolean isAllConditionsMet(TransportTaskTable table) {
-        return Arrays.stream(table.storage).allMatch(el -> el == 0) && Arrays.stream(table.need).allMatch(el -> el == 0);
+        return Arrays.stream(table.supply).allMatch(el -> el == 0) && Arrays.stream(table.demand).allMatch(el -> el == 0);
     }
 
     public static void lol(TransportTaskTable table, Shipment[][] basePlan, int i, int j) {
-        if (table.storage[i] >= table.need[j]) {
-            basePlan[i][j] = new Shipment(table.cost[i][j], i, j, table.need[j]);
-            table.storage[i] -= table.need[j];
-            table.need[j] = 0;
+        if (table.supply[i] >= table.demand[j]) {
+            basePlan[i][j] = new Shipment(table.cost[i][j], i, j, table.demand[j]);
+            table.supply[i] -= table.demand[j];
+            table.demand[j] = 0;
         } else {
-            basePlan[i][j] = new Shipment(table.cost[i][j], i, j, table.storage[i]);
-            table.need[j] -= table.storage[i];
-            table.storage[i] = 0;
+            basePlan[i][j] = new Shipment(table.cost[i][j], i, j, table.supply[i]);
+            table.demand[j] -= table.supply[i];
+            table.supply[i] = 0;
         }
     }
 
+    /**
+     * Поиск максимального элемента в матрице.
+     * После определения этого элемента, возвращает его и затем удаляет.
+     *
+     * @param m количество строк матрицы.
+     * @param n количество столбцов матрицы.
+     * @param a матрица.
+     * @return Кортеж индексов максимального элемента матрицы.
+     */
     //возвращает индексы, представленные в виде кортежа, максимального элемента в матрицы a размера MxN
-    public static Tuple<Integer> findMaxMatrixMask(final int m, final int n, int[][] a) {
+    public static Tuple<Integer> findMaxMatrix(final int m, final int n, int[][] a) {
         Tuple<Integer> res = new Tuple<>(null, null);
         int max = 0;
 
@@ -477,21 +495,23 @@ public class UtilUseCase {
     }
 
 
-    /** Увеличивает приоритеты элементов строк.
+    /**
+     * Увеличивает приоритеты элементов строк.
      * Используется в методе двойного предпочтения.
+     *
      * @param table таблица опорного плана.
-     * @param mask маска приоритетов.
+     * @param mask  маска приоритетов.
      */
     public static void setColPriorities(TransportTaskTable table, int[][] mask) {
-        for (int j = 0; j < table.need.length; j++) {
-            if (table.need[j] != 0) {
+        for (int j = 0; j < table.demand.length; j++) {
+            if (table.demand[j] != 0) {
                 int min = Integer.MAX_VALUE;
 
-                for (int i = 0; i < table.storage.length; ++i) {
-                    if (table.cost[i][j] < min && table.storage[i] != 0) min = table.cost[i][j];
+                for (int i = 0; i < table.supply.length; ++i) {
+                    if (table.cost[i][j] < min && table.supply[i] != 0) min = table.cost[i][j];
                 }
 
-                for (int i = table.storage.length - 1; i >= 0; i--) {
+                for (int i = table.supply.length - 1; i >= 0; i--) {
                     if (table.cost[i][j] == min) {
                         mask[i][j]++;
                         break;
@@ -501,22 +521,24 @@ public class UtilUseCase {
         }
     }
 
-    /** Увеличивает приоритеты элементов столбцов.
+    /**
+     * Увеличивает приоритеты элементов столбцов.
      * Используется в методе двойного предпочтения.
+     *
      * @param table таблица опорного плана.
-     * @param mask маска приоритетов.
+     * @param mask  маска приоритетов.
      */
     public static void setRowPriorities(TransportTaskTable table, int[][] mask) {
-        for (int i = 0; i < table.storage.length; i++) {
-            if (table.storage[i] != 0) {
+        for (int i = 0; i < table.supply.length; i++) {
+            if (table.supply[i] != 0) {
                 int min = Integer.MAX_VALUE;
 
-                for (int j = 0; j < table.need.length; j++) {
-                    if (table.cost[i][j] < min && table.need[j] != 0) min = table.cost[i][j];
+                for (int j = 0; j < table.demand.length; j++) {
+                    if (table.cost[i][j] < min && table.demand[j] != 0) min = table.cost[i][j];
                 }
 
-                for (int j = table.need.length - 1; j >= 0; j--) {
-                    if (table.cost[i][j] == min && table.need[j] != 0) {
+                for (int j = table.demand.length - 1; j >= 0; j--) {
+                    if (table.cost[i][j] == min && table.demand[j] != 0) {
                         mask[i][j]++;
                         break;
                     }
@@ -538,11 +560,13 @@ public class UtilUseCase {
                 .collect(toCollection(LinkedList::new));
     }
 
-    /** Выполняет расчёт потенциалов для свободных клеток.
-     * @param table таблица транспортной задачи.
-     * @param basePlan матрица опорного плана.
-     * @param u потенциалы складов.
-     * @param v потенциалы потребителей.
+    /**
+     * Выполняет расчёт потенциалов для свободных клеток.
+     *
+     * @param table     таблица транспортной задачи.
+     * @param basePlan  матрица опорного плана.
+     * @param u         потенциалы складов.
+     * @param v         потенциалы потребителей.
      * @param deltaCost матрица потенциалов свободных клеток.
      */
     static void calculateDeltaFreeCells(TransportTaskTable table,
@@ -550,8 +574,8 @@ public class UtilUseCase {
                                         int[] u,
                                         int[] v,
                                         int[][] deltaCost) {
-        for (int i = 0; i < table.storage.length; ++i) {
-            for (int j = 0; j < table.need.length; ++j) {
+        for (int i = 0; i < table.supply.length; ++i) {
+            for (int j = 0; j < table.demand.length; ++j) {
                 if (basePlan[i][j] == null) {
                     deltaCost[i][j] = table.cost[i][j] - (u[i] + v[j]);
                 }
@@ -559,11 +583,13 @@ public class UtilUseCase {
         }
     }
 
-    /** Выполняет подсчёт потенциалов для базисных (занятых) клеток.
-     * @param table таблица транспортной задачи.
+    /**
+     * Выполняет подсчёт потенциалов для базисных (занятых) клеток.
+     *
+     * @param table    таблица транспортной задачи.
      * @param basePlan матрица опорного плана.
-     * @param u потенциалы складов.
-     * @param v потенциалы потребителей.
+     * @param u        потенциалы складов.
+     * @param v        потенциалы потребителей.
      */
     public static void calculateDeltaBasicCells(TransportTaskTable table,
                                                 Shipment[][] basePlan,
@@ -578,7 +604,7 @@ public class UtilUseCase {
         LinkedList<Integer> t1 = new LinkedList<>();
         LinkedList<Integer> t2 = new LinkedList<>();
 
-        for (int j = 0; j < table.need.length; j++) {
+        for (int j = 0; j < table.demand.length; j++) {
             if (basePlan[0][j] != null && !vMask[j]) {
                 v[j] = table.cost[0][j] - u[0];
                 vMask[j] = true;
@@ -589,7 +615,7 @@ public class UtilUseCase {
         do {
             while (!t1.isEmpty()) {
                 int j = t1.pop();
-                for (int i = 0; i < table.storage.length; i++) {
+                for (int i = 0; i < table.supply.length; i++) {
                     if (basePlan[i][j] != null) {
                         u[i] = table.cost[i][j] - v[j];
                         uMask[i] = true;
@@ -600,7 +626,7 @@ public class UtilUseCase {
 
             while (!t2.isEmpty()) {
                 int i = t2.pop();
-                for (int j = 0; j < table.need.length; j++) {
+                for (int j = 0; j < table.demand.length; j++) {
                     if (basePlan[i][j] != null) {
                         v[j] = table.cost[i][j] - u[i];
                         vMask[j] = true;
@@ -619,37 +645,44 @@ public class UtilUseCase {
         return true;
     }
 
-    /*
-        Метод потенциалов.
-        Приводит заданный опорный план basePlan к оптимальному плану.
-        */
+    /**
+     * Метод потенциалов.
+     * Приводит заданный опорный план к оптимальному плану.
+     * @param table    таблица транспортной задачи.
+     * @param basePlan матрица опорного плана.
+     * @return Истина, если данный опорный план является оптимальным,
+     * иначе - ложь.
+     */
     public static boolean isOptimal(TransportTaskTable table, Shipment[][] basePlan) {
-        int[] u = new int[table.storage.length];
-        int[] v = new int[table.need.length];
+        int[] u = new int[table.supply.length];
+        int[] v = new int[table.demand.length];
 
-        for (int i = 0; i < table.storage.length; i++) u[i] = -1;
-        for (int i = 0; i < table.need.length; i++) v[i] = -1;
+        for (int i = 0; i < table.supply.length; i++) u[i] = -1;
+        for (int i = 0; i < table.demand.length; i++) v[i] = -1;
 
         calculateDeltaBasicCells(table, basePlan, u, v);
 
-        int[][] deltaCost = new int[table.storage.length][table.need.length];
+        int[][] deltaCost = new int[table.supply.length][table.demand.length];
 
         calculateDeltaFreeCells(table, basePlan, u, v, deltaCost);
 
         return Arrays.stream(deltaCost).noneMatch(sm -> Arrays.stream(sm).anyMatch(val -> val < 0));
     }
 
-    /*
-         Возвращает сумму опорного плана матрицы опорного плана
-         basePlan размера MxN с использованием матрицы стоимостей cost размера MxN.
-         */
-    public static int calculateBasePlan(int m, int n, int[][] cost, Shipment[][] basePlan) {
+    /**
+     * Вычисляет общую стоимость всех перевозок матрицы опорного плана.
+     *
+     * @param table    таблица транспортной задачи.
+     * @param basePlan матрица опорного плана.
+     * @return Стоимость перевозок матрицы опорного плана.
+     */
+    public static int calculateBasePlan(TransportTaskTable table, Shipment[][] basePlan) {
         int res = 0;
 
-        for (int i = 0; i < m; ++i) {
-            for (int j = 0; j < n; ++j) {
+        for (int i = 0; i < table.supply.length; ++i) {
+            for (int j = 0; j < table.demand.length; ++j) {
                 if (basePlan[i][j] != null) {
-                    res += cost[i][j] * basePlan[i][j].quantity;
+                    res += table.cost[i][j] * basePlan[i][j].quantity;
                 }
             }
         }
@@ -657,12 +690,14 @@ public class UtilUseCase {
         return res;
     }
 
-    /** Проверка закрытости/открытости транспортной задачи.
+    /**
+     * Проверка закрытости/открытости транспортной задачи.
+     *
      * @param sumOfAllSupplies сумма всех запасов.
-     * @param sumOfAllDemands сумма всех потребностей.
+     * @param sumOfAllDemands  сумма всех потребностей.
      * @return Возвращает 1, если данная транспортная задача является закрытой;
-     *         Возвращает 0, если транспортная задача является открытой и требует дополнительного склада;
-     *         Возвращает -1, иначе, если является открытой и требует дополнительного заказчика.
+     * Возвращает 0, если транспортная задача является открытой и требует дополнительного склада;
+     * Возвращает -1, иначе, если является открытой и требует дополнительного заказчика.
      */
     public static int checkOpenClose(int sumOfAllSupplies, int sumOfAllDemands) {
         int res;
@@ -686,38 +721,44 @@ public class UtilUseCase {
         return a;
     }
 
-    /** Приводит открытую транспортную задачу к закрытой.
-     * @param table таблица транспортной задачи.
+    /**
+     * Приводит открытую транспортную задачу к закрытой.
+     *
+     * @param table            таблица транспортной задачи.
      * @param sumOfAllSupplies сумма всех запасов.
-     * @param sumOfAllDemands сумма всех потребностей.
+     * @param sumOfAllDemands  сумма всех потребностей.
      */
     public static void getBalanced(TransportTaskTable table, int sumOfAllSupplies, int sumOfAllDemands) {
         //Если у нас запасов больше, чем потребностей
         if (PROBLEM_TYPE == 0) fictionalDemandCase(sumOfAllSupplies - sumOfAllDemands, table);
-        //Если у нас потребностей больше, чем есть на складах
+            //Если у нас потребностей больше, чем есть на складах
         else if (PROBLEM_TYPE == -1) fictionalSupplyCase(sumOfAllDemands - sumOfAllSupplies, table);
     }
 
-    /** Добавление фиктивного потребителя.
+    /**
+     * Добавление фиктивного потребителя.
+     *
      * @param newDemand количество потребностей нового потребителя.
-     * @param table таблица транспортной задачи.
+     * @param table     таблица транспортной задачи.
      */
     private static void fictionalDemandCase(int newDemand, TransportTaskTable table) {
-        table.setNeed(add(table.need, newDemand));
-        for (int i = 0; i < table.storage.length; i++) table.cost[i] = add(table.cost[i], 0);
+        table.setDemand(add(table.demand, newDemand));
+        for (int i = 0; i < table.supply.length; i++) table.cost[i] = add(table.cost[i], 0);
     }
 
 
-    /** Добавление фиктивного склада.
+    /**
+     * Добавление фиктивного склада.
+     *
      * @param newSupply количество запасов нового склада.
-     * @param table таблица транспортной задачи.
+     * @param table     таблица транспортной задачи.
      */
     private static void fictionalSupplyCase(int newSupply, TransportTaskTable table) {
-        table.setStorage(add(table.storage, newSupply));
+        table.setSupply(add(table.supply, newSupply));
 
         List<int[]> newCost = Arrays.stream(table.cost).collect(Collectors.toList());
 
-        newCost.add(new int[table.need.length]);
+        newCost.add(new int[table.demand.length]);
 
         table.setCost(newCost.toArray(new int[0][0]));
     }
@@ -738,9 +779,11 @@ public class UtilUseCase {
         }
     }
 
-    /** Выводит в консоль маршруты перевозок матрицы опорного плана.
-     * @param m количество строк матрицы.
-     * @param n количество столбцов матрицы.
+    /**
+     * Выводит в консоль маршруты перевозок матрицы опорного плана.
+     *
+     * @param m        количество строк матрицы.
+     * @param n        количество столбцов матрицы.
      * @param basePlan матрица опорного плана.
      */
     void printRoutes(final int m, final int n, final Shipment[][] basePlan) {

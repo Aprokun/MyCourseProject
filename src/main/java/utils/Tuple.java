@@ -5,6 +5,9 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+/** Кортеж.
+ * @param <T> тип кортежа.
+ */
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString

@@ -25,14 +25,6 @@ class UtilFunctionsTest {
     }
 
     @Test
-    void isEmptyColTest() {
-    }
-
-    @Test
-    void findMinMatrixTest() {
-    }
-
-    @Test
     void findTwoMinValuesTest() {
         int[] arr = new int[] {4, 9, 10, 2, 4, 5, 1};
         int[] arrMask = new int[] {1, 1, 0, 1, 1, 0, 1};

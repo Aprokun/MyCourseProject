@@ -11,32 +11,32 @@ public class Main {
         System.out.println("Решение транспортной задачи");
 
         System.out.println("Введите количество поставщиков");
-        int storageAmount = in.nextInt();
+        int supplyQuantity = in.nextInt();
 
         System.out.println("Введите значения складов");
-        int[] storage = new int[storageAmount];
-        inputArray(storage, storageAmount);
+        final int[] supply = new int[supplyQuantity];
+        inputArray(supply, supplyQuantity);
 
         System.out.println("Введите количество заказчиков");
-        int customersAmount = in.nextInt();
+        int demandQuantity = in.nextInt();
 
         System.out.println("Введите потребности заказчиков");
-        int[] need = new int[customersAmount];
-        inputArray(need, customersAmount);
+        final int[] demand = new int[demandQuantity];
+        inputArray(demand, demandQuantity);
 
         System.out.println("Введите матрицу стоимостей");
-        int[][] cost = new int[storageAmount][customersAmount];
-        inputMatrix(storageAmount, customersAmount, cost);
+        final int[][] cost = new int[supplyQuantity][demandQuantity];
+        inputMatrix(supplyQuantity, demandQuantity, cost);
 
-        TransportTaskTable table = new TransportTaskTable(storage, need, cost);
+        TransportTaskTable table = new TransportTaskTable(supply.clone(), demand.clone(), cost.clone());
 
-        final int sumAllStorages = Arrays.stream(storage).sum();
-        final int sumAllNeeds = Arrays.stream(need).sum();
+        final int sumAllSuplies = Arrays.stream(supply).sum();
+        final int sumAllDemands = Arrays.stream(demand).sum();
 
-        PROBLEM_TYPE = checkOpenClose(sumAllStorages, sumAllNeeds);
+        PROBLEM_TYPE = checkOpenClose(sumAllSuplies, sumAllDemands);
 
         //Если задача открытого вида
-        if (PROBLEM_TYPE != 1) getBalanced(table, sumAllStorages, sumAllNeeds);
+        if (PROBLEM_TYPE != 1) getBalanced(table, sumAllSuplies, sumAllDemands);
 
         System.out.println("""
                 Выберите метод решения
@@ -48,14 +48,14 @@ public class Main {
         Shipment[][] basePlan;
 
         switch (in.nextByte()) {
-            case 1 -> basePlan = northWestMethod(table);
+            case 1 -> basePlan = northWestCorner(table);
             case 2 -> basePlan = minCostMethod(table);
             case 3 -> basePlan = vogelApproximationMethod(table);
             case 4 -> basePlan = doublePreferenceMethod(table);
             default -> throw new IllegalStateException("Unexpected value");
         }
 
-        System.out.println(calculateBasePlan(storageAmount, customersAmount, table.cost, basePlan));
+        System.out.println(calculateBasePlan(table, basePlan));
 
         while (isDegenerate(basePlan)) fixDegenerate(table, basePlan);
 
@@ -64,6 +64,6 @@ public class Main {
             fixDegenerate(table, basePlan);
         }
 
-        System.out.println(calculateBasePlan(storageAmount, customersAmount, table.cost, basePlan));
+        System.out.println(calculateBasePlan(table, basePlan));
     }
 }

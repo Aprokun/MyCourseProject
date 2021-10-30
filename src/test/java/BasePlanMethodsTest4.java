@@ -5,7 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import utils.UtilUseCase;
 
-class BasePlanMethodsTest1 {
+class BasePlanMethodsTest4 {
     private TransportTaskTable table;
 
     @BeforeEach
