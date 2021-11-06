@@ -454,7 +454,15 @@ public class UtilUseCase {
         return Arrays.stream(table.supply).allMatch(el -> el == 0) && Arrays.stream(table.demand).allMatch(el -> el == 0);
     }
 
-    public static void lol(TransportTaskTable table, Shipment[][] basePlan, int i, int j) {
+    /**
+     * ¬спомогательна€ функци€ дл€ vogelApproximationMethod.
+     *
+     * @param table    таблица транспортной задачи.
+     * @param basePlan матрица опорного плана.
+     * @param i        индекс склада.
+     * @param j        индекс потребител€.
+     */
+    public static void calc(TransportTaskTable table, Shipment[][] basePlan, int i, int j) {
         if (table.supply[i] >= table.demand[j]) {
             basePlan[i][j] = new Shipment(table.cost[i][j], i, j, table.demand[j]);
             table.supply[i] -= table.demand[j];
@@ -475,7 +483,6 @@ public class UtilUseCase {
      * @param a матрица.
      * @return  ортеж индексов максимального элемента матрицы.
      */
-    //возвращает индексы, представленные в виде кортежа, максимального элемента в матрицы a размера MxN
     public static Tuple<Integer> findMaxMatrix(final int m, final int n, int[][] a) {
         Tuple<Integer> res = new Tuple<>(null, null);
         int max = 0;
@@ -512,7 +519,7 @@ public class UtilUseCase {
                 }
 
                 for (int i = table.supply.length - 1; i >= 0; i--) {
-                    if (table.cost[i][j] == min) {
+                    if (table.cost[i][j] == min && table.supply[i] != 0) {
                         mask[i][j]++;
                         break;
                     }

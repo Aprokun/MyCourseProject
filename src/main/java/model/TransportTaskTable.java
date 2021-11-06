@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Setter;
 
+/**
+ *  ласс, описывающий таблицу транспортной задачи.
+ */
 @AllArgsConstructor
 @Setter
 @Builder
